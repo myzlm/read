@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>万能朗读器 · Universal Reader</title>
+<title>万能朗读器 · Universal Reader Pro</title>
 <style>
-  :root {
+  :root, :root[data-theme=dark] {
     --bg: #0f1117;
     --panel: #171a23;
     --panel2: #1e2230;
@@ -17,7 +17,19 @@
     --accent-glow: rgba(108, 140, 255, .35);
     --green: #4ade80;
     --red: #f87171;
-    --radius: 14px;
+    --shadow: rgba(0,0,0,.25);
+  }
+  :root[data-theme=light] {
+    --bg: #f3f5fa;
+    --panel: #ffffff;
+    --panel2: #f0f3f9;
+    --border: #d9dfec;
+    --text: #1c2333;
+    --text-dim: #5d6880;
+    --accent: #4a6cf7;
+    --accent2: #8b5cf6;
+    --accent-glow: rgba(74,108,247,.25);
+    --shadow: rgba(30,50,100,.08);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -26,50 +38,66 @@
     color: var(--text);
     min-height: 100vh;
     padding: 24px 16px 60px;
+    transition: background .3s, color .3s;
     background-image:
-      radial-gradient(ellipse 600px 300px at 15% 0%, rgba(108,140,255,.12), transparent),
+      radial-gradient(ellipse 600px 300px at 15% 0%, var(--accent-glow), transparent),
       radial-gradient(ellipse 600px 300px at 85% 10%, rgba(154,108,255,.10), transparent);
   }
-  .container { max-width: 860px; margin: 0 auto; }
+  .container { max-width: 880px; margin: 0 auto; }
 
-  header { text-align: center; margin-bottom: 28px; }
+  header { text-align: center; margin-bottom: 24px; position: relative; }
   header h1 {
     font-size: 30px; font-weight: 700; letter-spacing: 1px;
     background: linear-gradient(120deg, var(--accent), var(--accent2));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   header p { color: var(--text-dim); margin-top: 8px; font-size: 14px; }
+  #btnTheme {
+    position: absolute; right: 0; top: 0; padding: 8px 12px; border-radius: 10px;
+  }
 
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 14px;
     padding: 20px;
     margin-bottom: 18px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    box-shadow: 0 8px 30px var(--shadow);
   }
   .card h2 {
     font-size: 15px; color: var(--text-dim); font-weight: 600;
     margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
   }
-  .card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .card h2 .tip { font-weight: 400; font-size: 12px; }
 
   /* 文本区 */
   #textInput {
-    width: 100%; min-height: 160px; resize: vertical;
+    width: 100%; min-height: 170px; resize: vertical;
     background: var(--panel2); color: var(--text);
     border: 1px solid var(--border); border-radius: 10px;
     padding: 14px; font-size: 16px; line-height: 1.7;
     outline: none; transition: border-color .2s;
   }
   #textInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-  .toolbar { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
-  .toolbar .hint { color: var(--text-dim); font-size: 12px; }
+  #textInput.dragover { border: 2px dashed var(--accent); background: var(--accent-glow); }
+  .toolbar { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .toolbar .hint { color: var(--text-dim); font-size: 12px; margin-left: auto; }
+
+  /* 进度条 */
+  .progress-wrap { display: none; margin-top: 14px; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .progress-bar { height: 6px; background: var(--panel2); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .3s; }
 
   /* 阅读高亮 */
   #readingView { display: none; margin-top: 14px; padding: 14px; background: var(--panel2);
-    border-radius: 10px; border: 1px solid var(--border); font-size: 16px; line-height: 1.9; }
-  #readingView .sent { transition: background .2s; padding: 2px 4px; border-radius: 4px; color: var(--text-dim); }
+    border-radius: 10px; border: 1px solid var(--border); font-size: 16px; line-height: 1.9;
+    max-height: 260px; overflow-y: auto; }
+  #readingView .sent { transition: background .2s; padding: 2px 4px; border-radius: 4px;
+    color: var(--text-dim); cursor: pointer; }
+  #readingView .sent:hover { background: var(--panel); }
   #readingView .sent.active { background: var(--accent-glow); color: var(--text); }
   #readingView .sent.done { color: var(--text); }
 
@@ -77,8 +105,8 @@
   button {
     cursor: pointer; border: 1px solid var(--border);
     background: var(--panel2); color: var(--text);
-    padding: 10px 18px; border-radius: 10px; font-size: 14px;
-    transition: all .18s;
+    padding: 10px 16px; border-radius: 10px; font-size: 14px;
+    transition: all .18s; white-space: nowrap;
   }
   button:hover { border-color: var(--accent); transform: translateY(-1px); }
   button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
@@ -88,28 +116,35 @@
     box-shadow: 0 4px 18px var(--accent-glow);
   }
   .btn-danger { color: var(--red); }
-  .btn-green { color: var(--green); }
+  .btn-on { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
 
   /* 控制区 */
   .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-  .control label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
-    display: flex; justify-content: space-between; }
+  .control label { font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center; }
   .control label span.val { color: var(--accent); font-weight: 600; }
-  select {
+  select, input[type=text] {
     width: 100%; padding: 10px; border-radius: 10px;
     background: var(--panel2); color: var(--text);
     border: 1px solid var(--border); outline: none; font-size: 14px;
   }
-  select:focus { border-color: var(--accent); }
+  select:focus, input[type=text]:focus { border-color: var(--accent); }
   input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; user-select: none; }
+  .switch-row input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+  /* 引擎说明 */
+  details { margin-top: 12px; font-size: 13px; color: var(--text-dim); }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+  details ol, details ul { padding-left: 20px; line-height: 1.9; }
+  details code { background: var(--panel2); padding: 2px 6px; border-radius: 5px; font-size: 12px;
+    border: 1px solid var(--border); word-break: break-all; }
+  .notice { background: var(--accent-glow); border: 1px solid var(--accent); border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none; }
 
   /* 预设 */
   .preset-row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .preset-row input[type=text] {
-    flex: 1; min-width: 160px; padding: 10px 12px; border-radius: 10px;
-    background: var(--panel2); color: var(--text);
-    border: 1px solid var(--border); outline: none; font-size: 14px;
-  }
+  .preset-row input[type=text] { flex: 1; min-width: 160px; }
   .preset-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
   .preset-chip {
     display: inline-flex; align-items: center; gap: 8px;
@@ -118,11 +153,18 @@
     transition: border-color .2s;
   }
   .preset-chip:hover { border-color: var(--accent); }
-  .preset-chip button {
-    border: none; background: none; padding: 0; font-size: 13px;
-    color: var(--accent); cursor: pointer;
+  .preset-chip button { border: none; background: none; padding: 0; font-size: 13px; color: var(--accent); }
+  .preset-chip .del { color: var(--red); }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--panel); border: 1px solid var(--accent); color: var(--text);
+    padding: 10px 20px; border-radius: 10px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: all .25s; z-index: 99;
+    box-shadow: 0 6px 24px var(--shadow);
   }
-  .preset-chip .del { color: var(--red); margin-left: 2px; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 30px; line-height: 1.8; }
   .banner-warn {
@@ -134,8 +176,9 @@
 <body>
 <div class="container">
   <header>
-    <h1>🎙️ 万能朗读器</h1>
-    <p>多语言朗读 · 语速音调自由调节 · 自定义声音预设 · 完全本地运行，无需联网</p>
+    <h1>🎙️ 万能朗读器 Pro</h1>
+    <p>智能多语言 · 逐句跟读跳转 · 句间停顿 · 自定义语音引擎（可接洛天依等声音模型）· 本地运行</p>
+    <button id="btnTheme" title="切换主题">🌙 深色</button>
   </header>
 
   <div class="banner-warn" id="noSupport">
@@ -144,14 +187,27 @@
 
   <!-- 输入区 -->
   <div class="card">
-    <h2><span class="dot"></span>朗读文本</h2>
-    <textarea id="textInput" placeholder="在此输入或粘贴要朗读的文字… 支持中文、英文、日文、韩文、法文、德文等任何语言。&#10;&#10;试试：「你好，世界！Hello, world! こんにちは！」">你好，欢迎使用万能朗读器！Hello, welcome to the Universal Reader!</textarea>
+    <h2><span class="dot"></span>朗读文本 <span class="tip">支持直接拖入 txt / md 文件</span></h2>
+    <textarea id="textInput" placeholder="在此输入或粘贴要朗读的文字，也可以把 txt 文件直接拖进来。&#10;&#10;试试：「你好，世界！Hello, world! こんにちは！안녕하세요！」">你好，欢迎使用万能朗读器 Pro！今天天气真不错，我们一起读点有趣的东西吧。Hello, welcome to the Universal Reader Pro! こんにちは、素敵な一日を！</textarea>
     <div class="toolbar">
       <button class="btn-primary" id="btnPlay">▶ 开始朗读</button>
       <button id="btnPause" disabled>⏸ 暂停</button>
       <button id="btnResume" disabled>⏯ 继续</button>
+      <button id="btnPrev" disabled>⏮ 上一句</button>
+      <button id="btnNext" disabled>⏭ 下一句</button>
       <button class="btn-danger" id="btnStop" disabled>⏹ 停止</button>
+      <button id="btnLoop" title="循环播放">🔁 循环</button>
+    </div>
+    <div class="toolbar">
+      <button id="btnImport">📄 导入文本</button>
+      <button id="btnSample">✨ 示例文本</button>
+      <button id="btnClear">🗑 清空</button>
       <span class="hint" id="charCount">0 字符</span>
+    </div>
+    <input type="file" id="fileInput" accept=".txt,.md,.csv,.json,.srt,.lrc" style="display:none">
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-info"><span id="progressSentence">第 0 句</span><span id="progressTime">剩余约 --</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     </div>
     <div id="readingView"></div>
   </div>
@@ -165,12 +221,16 @@
         <select id="langSelect"></select>
       </div>
       <div class="control">
+        <label>搜索声音 <span class="val" id="searchHit"></span></label>
+        <input type="text" id="voiceSearch" placeholder="输入关键词，如：晓晓 / Yamada / 洛天依">
+      </div>
+      <div class="control" style="grid-column: 1 / -1;">
         <label>音色 / 声音 <span class="val" id="voiceVal"></span></label>
-        <select id="voiceSelect"></select>
+        <select id="voiceSelect" size="1"></select>
       </div>
       <div class="control">
         <label>语速 <span class="val" id="rateVal">1.0x</span></label>
-        <input type="range" id="rate" min="0.5" max="2.5" step="0.1" value="1">
+        <input type="range" id="rate" min="0.5" max="2.5" step="0.05" value="1">
       </div>
       <div class="control">
         <label>音调（音色高低） <span class="val" id="pitchVal">1.0</span></label>
@@ -181,15 +241,61 @@
         <input type="range" id="volume" min="0" max="1" step="0.05" value="1">
       </div>
       <div class="control">
-        <label>试听示例</label>
-        <button style="width:100%" id="btnTest">🔊 用当前设置试听一句</button>
+        <label>句间停顿 <span class="val" id="gapVal">150ms</span></label>
+        <input type="range" id="gap" min="0" max="1000" step="50" value="150">
+      </div>
+      <div class="control" style="display:flex;flex-direction:column;gap:12px;">
+        <label class="switch-row"><input type="checkbox" id="smartLang" checked> 🌐 智能多语言：自动按每句语言切换声音</label>
+        <button id="btnTest">🔊 用当前设置试听</button>
       </div>
     </div>
+    <div class="notice" id="tianyiNotice"></div>
   </div>
 
-  <!-- 自定义声音预设 -->
+  <!-- 自定义语音引擎 -->
   <div class="card">
-    <h2><span class="dot"></span>自定义声音（保存当前设置为一套预设）</h2>
+    <h2><span class="dot"></span>自定义语音引擎 <span class="tip">接入本地 / 第三方 TTS，用上洛天依等声音模型</span></h2>
+    <label class="switch-row" style="margin-bottom:14px"><input type="checkbox" id="engineOn"> 启用自定义引擎（启用后朗读、语速由引擎接管，音调由引擎决定）</label>
+    <div class="controls">
+      <div class="control">
+        <label>请求方式</label>
+        <select id="engineMethod"><option value="GET">GET（URL 参数）</option><option value="POST">POST（JSON 请求体）</option></select>
+      </div>
+      <div class="control">
+        <label>语速传给引擎</label>
+        <select id="engineSpeedMode"><option value="factor">倍率数字（如 1.2）</option><option value="percent">百分比（如 120）</option></select>
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <label>接口 URL 模板（占位符：<code>{text}</code> <code>{rate}</code> <code>{pitch}</code>）</label>
+        <input type="text" id="engineUrl" placeholder="http://127.0.0.1:9880/tts?text={text}&speed_factor={rate}...">
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <label>POST 请求体 JSON 模板（仅 POST 模式需要）</label>
+        <input type="text" id="engineBody" placeholder='{"text":"{text}","speed":{rate}}'>
+      </div>
+      <div class="control" style="grid-column:1/-1;display:flex;gap:10px">
+        <button id="btnEngineTest" style="flex:0 0 auto">🧪 测试引擎连接</button>
+        <span class="hint" style="color:var(--text-dim);font-size:12px;align-self:center">引擎需返回音频（wav / mp3）。测试会朗读示例句子。</span>
+      </div>
+    </div>
+    <details>
+      <summary>💡 想用「洛天依」的声音？看这里</summary>
+      <ol>
+        <li><b>方案 A · 本地声音模型（最推荐）</b>：部署开源的 <code>GPT-SoVITS</code> 或 <code>Bert-VITS2</code>，加载社区训练好的洛天依声音模型，然后按下方示例填入接口地址即可。</li>
+        <li><b>方案 B · 在线合成 API</b>：任何支持自定义音色 / 声音模型 ID、返回音频的 HTTP 语音合成服务，都可以直接填入上面使用。</li>
+        <li><b>方案 C · 系统语音</b>：如果安装了第三方系统语音引擎，在上方「搜索声音」里输入"洛天依"或"天依"看看有没有。</li>
+      </ol>
+      <p style="margin-top:8px">常见接口示例（GPT-SoVITS api_v2）：<br>
+      <code>http://127.0.0.1:9880/tts?text={text}&amp;text_lang=zh&amp;ref_audio_path=参考音频.wav&amp;prompt_text=&amp;prompt_lang=zh&amp;speed_factor={rate}&amp;media_type=wav&amp;streaming_mode=false</code></p>
+      <p style="margin-top:6px">Bert-VITS2 示例：<br>
+      <code>http://127.0.0.1:7860/voice?text={text}&amp;language=zh&amp;model_id=0&amp;length_scale={pitch换算}</code></p>
+      <p style="margin-top:6px;color:var(--text-dim)">说明：引擎需允许跨域（CORS），本地部署的服务一般默认允许或可配置。</p>
+    </details>
+  </div>
+
+  <!-- 预设 -->
+  <div class="card">
+    <h2><span class="dot"></span>自定义声音预设 <span class="tip">把当前「语言+音色+语速+音调+停顿」整套保存，一键切换</span></h2>
     <div class="preset-row">
       <input type="text" id="presetName" placeholder="给这套声音起个名字，如：温柔女声 / 低沉大叔 / 日语慢速…" maxlength="20">
       <button class="btn-primary" id="btnSavePreset">💾 保存当前声音</button>
@@ -198,38 +304,63 @@
   </div>
 
   <footer>
-    基于浏览器 Web Speech API 构建 · 声音取决于系统安装的语音包<br>
-    提示：在 Windows「设置 → 时间和语言 → 语音」中可添加更多语言语音包 · 预设保存在本地浏览器中
+    快捷键：Ctrl+Enter 播放 · Esc 停止 · ←/→ 上一句/下一句（朗读中）· 所有设置自动保存在本地浏览器<br>
+    系统声音质量取决于本机语音包；想要更好听的音色，可通过「自定义语音引擎」接入任意 TTS 服务
   </footer>
 </div>
+<div id="toast"></div>
 
 <script>
 (function () {
   const synth = window.speechSynthesis;
   const $ = (id) => document.getElementById(id);
   const textInput = $('textInput'), langSelect = $('langSelect'), voiceSelect = $('voiceSelect');
-  const rate = $('rate'), pitch = $('pitch'), volume = $('volume');
-  const btnPlay = $('btnPlay'), btnPause = $('btnPause'), btnResume = $('btnResume'), btnStop = $('btnStop');
+  const rate = $('rate'), pitch = $('pitch'), volume = $('volume'), gap = $('gap');
+  const btnPlay = $('btnPlay'), btnPause = $('btnPause'), btnResume = $('btnResume');
+  const btnStop = $('btnStop'), btnPrev = $('btnPrev'), btnNext = $('btnNext');
   const readingView = $('readingView');
+  const STORE_PRESET = 'ur_presets', STORE_SET = 'ur_settings', STORE_ENGINE = 'ur_engine';
 
   if (!synth) { $('noSupport').style.display = 'block'; document.querySelectorAll('button').forEach(b => b.disabled = true); return; }
 
   let voices = [];
-  let speaking = false, paused = false;
-  let sentences = [], curIdx = 0;
+  let speaking = false, paused = false, loopOn = false;
+  let sentences = [], curIdx = 0, gapTimer = null;
+  let audioEl = null, playingToken = 0; // 用于异步打断
 
-  /* ---------- 工具 ---------- */
+  /* ================= 通用 ================= */
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+  }
   const LANG_NAMES = { 'zh': '中文', 'en': '英语', 'ja': '日语', 'ko': '韩语', 'fr': '法语', 'de': '德语', 'es': '西班牙语', 'ru': '俄语', 'it': '意大利语', 'pt': '葡萄牙语', 'ar': '阿拉伯语', 'th': '泰语', 'vi': '越南语', 'yue': '粤语' };
   function langLabel(code) {
-    const base = code.toLowerCase().split(/[-_]/)[0];
-    const name = LANG_NAMES[base] || code;
-    return base === 'zh' && /hant|tw|hk/i.test(code) ? '中文（繁/粤）' : name;
+    const base = (code || '').toLowerCase().split(/[-_]/)[0];
+    if (base === 'zh' && /hant|tw|hk/i.test(code || '')) return '中文（繁/粤）';
+    return LANG_NAMES[base] || code || '未知';
+  }
+  function detectLang(s) {
+    if (/[\u3040-\u309f\u30a0-\u30ff]/.test(s)) return 'ja';
+    if (/[\uac00-\ud7af]/.test(s)) return 'ko';
+    if (/[\u0400-\u04ff]/.test(s)) return 'ru';
+    if (/[\u4e00-\u9fff]/.test(s)) return 'zh';
+    if (/[\u00c0-\u017f\u0100-\u014f]/.test(s)) return 'fr';
+    return 'en';
+  }
+  function pickVoiceForLang(base) {
+    const current = voices.find(v => v.name === voiceSelect.value);
+    const curBase = current ? current.lang.toLowerCase().split(/[-_]/)[0] : '';
+    if (base === curBase) return current || null;
+    let pool = voices.filter(v => v.lang.toLowerCase().split(/[-_]/)[0] === base);
+    if (!pool.length) return null;
+    pool.sort((a, b) => (b.localService - a.localService));
+    return pool[0];
   }
 
+  /* ================= 声音列表 ================= */
   function loadVoices() {
     voices = synth.getVoices();
     if (!voices.length) return;
-    // 按语言分组
     const byLang = {};
     voices.forEach(v => { (byLang[v.lang] = byLang[v.lang] || []).push(v); });
     const langs = Object.keys(byLang).sort((a, b) => {
@@ -244,58 +375,81 @@
       opt.textContent = `${langLabel(l)} (${l}) · ${byLang[l].length} 个声音`;
       langSelect.appendChild(opt);
     });
-    fillVoiceSelect();
+    // 恢复上次选择
+    const saved = getSettings();
+    if (saved.lang && [...langSelect.options].some(o => o.value === saved.lang)) langSelect.value = saved.lang;
+    else if (saved.lang) { /* 语言不存在了，保持默认 */ }
+    fillVoiceSelect(true);
+    checkTianyi();
   }
 
-  function fillVoiceSelect() {
-    const lang = langSelect.value;
-    const list = voices.filter(v => v.lang === lang);
+  function fillVoiceSelect(restore) {
+    const kw = $('voiceSearch').value.trim().toLowerCase();
+    let list;
+    if (kw) {
+      list = voices.filter(v => (v.name + ' ' + v.lang + ' ' + langLabel(v.lang)).toLowerCase().includes(kw));
+      $('searchHit').textContent = list.length + ' 个匹配';
+    } else {
+      list = voices.filter(v => v.lang === langSelect.value);
+      $('searchHit').textContent = '';
+    }
     voiceSelect.innerHTML = '';
     list.forEach(v => {
       const opt = document.createElement('option');
       opt.value = v.name;
-      let tag = [];
-      if (v.localService) tag.push('本地'); else tag.push('在线');
-      if (/female|女/i.test(v.name)) tag.push('女'); else if (/male|男/i.test(v.name)) tag.push('男');
-      opt.textContent = `${v.name} · ${tag.join('/')}`;
+      let tag = [v.localService ? '本地' : '在线'];
+      if (/female|女|晓/i.test(v.name)) tag.push('女'); else if (/male|男/i.test(v.name)) tag.push('男');
+      opt.textContent = `${v.name} · ${langLabel(v.lang)} · ${tag.join('/')}`;
       voiceSelect.appendChild(opt);
     });
     $('voiceVal').textContent = list.length + ' 个';
+    if (restore) {
+      const saved = getSettings();
+      if (saved.voiceName && [...voiceSelect.options].some(o => o.value === saved.voiceName)) voiceSelect.value = saved.voiceName;
+    }
   }
 
-  function currentSettings() {
-    return {
-      lang: langSelect.value,
-      voiceName: voiceSelect.value,
-      rate: parseFloat(rate.value),
-      pitch: parseFloat(pitch.value),
-      volume: parseFloat(volume.value)
-    };
+  function checkTianyi() {
+    const hit = voices.find(v => /天依|tianyi|luotianyi/i.test(v.name));
+    const n = $('tianyiNotice');
+    if (hit) {
+      n.style.display = 'block';
+      n.innerHTML = `🎉 检测到系统里安装了洛天依语音：<b>${hit.name}</b>（${hit.lang}），已在下方语言列表里，选它就能用天依的声音朗读啦！`;
+    } else {
+      n.style.display = 'none';
+    }
   }
 
-  function speakText(text, settings, onend) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = settings.lang;
-    const v = voices.find(v => v.name === settings.voiceName);
-    if (v) u.voice = v;
-    u.rate = settings.rate;
-    u.pitch = settings.pitch;
-    u.volume = settings.volume;
-    if (onend) u.onend = onend;
-    u.onerror = (e) => { if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn(e); };
-    synth.speak(u);
-    return u;
+  /* ================= 设置持久化 ================= */
+  function getSettings() { try { return JSON.parse(localStorage.getItem(STORE_SET)) || {}; } catch { return {}; } }
+  function saveSettings() {
+    localStorage.setItem(STORE_SET, JSON.stringify({
+      lang: langSelect.value, voiceName: voiceSelect.value,
+      rate: rate.value, pitch: pitch.value, volume: volume.value,
+      gap: gap.value, smartLang: $('smartLang').checked, text: textInput.value
+    }));
   }
 
-  /* ---------- 分句 + 高亮朗读 ---------- */
+  /* ================= 分句 + 高亮 ================= */
   function splitSentences(text) {
-    // 按中英文标点分句，保留标点
-    return text.split(/(?<=[。！？；!?;.…\n])\s*/).filter(s => s.trim());
+    const parts = text.split(/(?<=[。！？；!?;.…\n])\s*/).filter(s => s.trim());
+    // 超长句再按逗号、顿号切分（防止一整段没有句末标点）
+    const out = [];
+    parts.forEach(p => {
+      if (p.length <= 60) { out.push(p); return; }
+      let buf = '';
+      p.split(/(?<=[，、,:：—])/).forEach(seg => {
+        buf += seg;
+        if (buf.length >= 60) { out.push(buf); buf = ''; }
+      });
+      if (buf.trim()) out.push(buf);
+    });
+    return out;
   }
-
   function renderReadingView() {
     readingView.style.display = 'block';
-    readingView.innerHTML = sentences.map((s, i) => `<span class="sent" data-i="${i}">${s.replace(/</g, '&lt;')}</span>`).join(' ');
+    readingView.innerHTML = sentences.map((s, i) =>
+      `<span class="sent" data-i="${i}" title="点击从这句开始朗读">${s.replace(/</g, '&lt;')}</span>`).join(' ');
   }
   function highlight(i) {
     readingView.querySelectorAll('.sent').forEach(el => {
@@ -304,77 +458,301 @@
     });
     const act = readingView.querySelector('.sent.active');
     if (act) act.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    // 进度
+    const total = sentences.reduce((a, s) => a + s.length, 0);
+    const done = sentences.slice(0, Math.max(i, 0)).reduce((a, s) => a + s.length, 0);
+    $('progressFill').style.width = (total ? done / total * 100 : 0) + '%';
+    $('progressSentence').textContent = `第 ${Math.max(i + 1, 1)} / ${sentences.length} 句`;
+    if (i >= 0) {
+      const remain = total - done;
+      const sec = Math.round(remain * 0.32 / parseFloat(rate.value));
+      $('progressTime').textContent = sec > 60 ? `剩余约 ${Math.floor(sec / 60)} 分 ${sec % 60} 秒` : `剩余约 ${sec} 秒`;
+    }
   }
 
-  function startSpeaking() {
+  /* ================= 朗读核心 ================= */
+  function currentSettings() {
+    return {
+      lang: langSelect.value, voiceName: voiceSelect.value,
+      rate: parseFloat(rate.value), pitch: parseFloat(pitch.value),
+      volume: parseFloat(volume.value), gap: parseInt(gap.value)
+    };
+  }
+
+  function startSpeaking(from = 0) {
     const text = textInput.value.trim();
     if (!text) { textInput.focus(); return; }
-    synth.cancel();
+    stopAll(false);
     sentences = splitSentences(text);
-    curIdx = 0;
+    curIdx = Math.min(from, sentences.length - 1);
     renderReadingView();
+    $('progressWrap').style.display = 'block';
     setUI(true);
     speakNext();
   }
 
   function speakNext() {
-    if (curIdx >= sentences.length) { stopSpeaking(); return; }
+    if (!speaking) return;
+    if (curIdx >= sentences.length) {
+      if (loopOn) { curIdx = 0; setTimeout(speakNext, 600); return; }
+      stopSpeaking(); return;
+    }
     highlight(curIdx);
-    const settings = currentSettings();
-    speakText(sentences[curIdx], settings, () => {
-      if (!speaking) return;
-      curIdx++;
-      speakNext();
-    });
+    const token = ++playingToken;
+    const text = sentences[curIdx];
+    if ($('engineOn').checked) {
+      playEngineSentence(text, token);
+    } else {
+      speakNative(text, token);
+    }
   }
 
+  function speakNative(text, token) {
+    const s = currentSettings();
+    const u = new SpeechSynthesisUtterance(text);
+    const smart = $('smartLang').checked;
+    const base = smart ? detectLang(text) : s.lang.toLowerCase().split(/[-_]/)[0];
+    const v = smart ? pickVoiceForLang(base) : voices.find(v => v.name === s.voiceName);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    else u.lang = s.lang;
+    u.rate = s.rate; u.pitch = s.pitch; u.volume = s.volume;
+    u.onend = () => {
+      if (!speaking || token !== playingToken) return;
+      scheduleNext(s.gap);
+    };
+    u.onerror = (e) => {
+      if (!speaking || token !== playingToken) return;
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      toast('语音出错：' + e.error); scheduleNext(s.gap);
+    };
+    synth.speak(u);
+  }
+
+  function scheduleNext(gapMs) {
+    clearTimeout(gapTimer);
+    gapTimer = setTimeout(() => { if (speaking) { curIdx++; speakNext(); } }, gapMs || 0);
+  }
+
+  /* ================= 自定义引擎 ================= */
+  function engineConfig() {
+    try { return JSON.parse(localStorage.getItem(STORE_ENGINE)) || {}; } catch { return {}; }
+  }
+  function buildRequest(text) {
+    const cfg = engineConfig();
+    const r = parseFloat(rate.value);
+    const rateVal = $('engineSpeedMode').value === 'percent' ? Math.round(r * 100) : r;
+    const url = cfg.url
+      .replace(/\{text\}/g, encodeURIComponent(text))
+      .replace(/\{rate\}/g, rateVal)
+      .replace(/\{pitch\}/g, pitch.value);
+    const opt = { method: cfg.method || 'GET' };
+    if (cfg.method === 'POST' && cfg.body) {
+      opt.headers = { 'Content-Type': 'application/json' };
+      opt.body = cfg.body
+        .replace(/\{text\}/g, JSON.stringify(text).slice(1, -1))
+        .replace(/\{rate\}/g, rateVal)
+        .replace(/\{pitch\}/g, pitch.value);
+    }
+    return { url, opt };
+  }
+
+  async function playEngineSentence(text, token) {
+    try {
+      const { url, opt } = buildRequest(text);
+      const res = await fetch(url, opt);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const ct = res.headers.get('content-type') || '';
+      let blob;
+      if (ct.includes('audio')) {
+        blob = await res.blob();
+      } else {
+        const data = await res.json();
+        const b64 = data.audio || data.audio_base64 || data.data;
+        if (!b64) throw new Error('返回中未找到音频字段');
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        blob = new Blob([bytes], { type: 'audio/wav' });
+      }
+      if (!speaking || token !== playingToken) return;
+      const url2 = URL.createObjectURL(blob);
+      audioEl = new Audio(url2);
+      audioEl.playbackRate = parseFloat(rate.value);
+      audioEl.volume = parseFloat(volume.value);
+      audioEl.onended = () => { URL.revokeObjectURL(url2); if (speaking && token === playingToken) scheduleNext(currentSettings().gap); };
+      audioEl.onerror = () => { URL.revokeObjectURL(url2); toast('音频播放失败'); if (speaking && token === playingToken) scheduleNext(200); };
+      await audioEl.play();
+    } catch (err) {
+      if (!speaking || token !== playingToken) return;
+      toast('⚠️ 自定义引擎出错：' + err.message + '（将回退到系统语音）');
+      speakNative(text, token);
+    }
+  }
+
+  async function testEngine() {
+    const url = $('engineUrl').value.trim();
+    if (!url) { toast('请先填写引擎 URL'); return; }
+    localStorage.setItem(STORE_ENGINE, JSON.stringify({
+      method: $('engineMethod').value, url,
+      body: $('engineBody').value, speedMode: $('engineSpeedMode').value
+    }));
+    toast('正在连接引擎…');
+    speaking = false; synth.cancel(); stopAudio(); playingToken++;
+    sentences = ['你好，我是自定义语音引擎的试听。'];
+    curIdx = 0; renderReadingView(); $('progressWrap').style.display = 'block';
+    setUI(true); speaking = true;
+    highlight(0);
+    playEngineSentence(sentences[0], ++playingToken);
+  }
+
+  /* ================= 控制 ================= */
+  function stopAudio() { if (audioEl) { audioEl.pause(); audioEl = null; } }
+  function stopAll(resetUI = true) {
+    speaking = false; paused = false; playingToken++;
+    clearTimeout(gapTimer);
+    synth.cancel(); stopAudio();
+    if (resetUI) setUI(false);
+  }
   function stopSpeaking() {
-    speaking = false; paused = false;
-    synth.cancel();
-    setUI(false);
+    stopAll();
     highlight(-1);
-    setTimeout(() => { if (!speaking) readingView.style.display = 'none'; }, 800);
+    setTimeout(() => { if (!speaking) { readingView.style.display = 'none'; $('progressWrap').style.display = 'none'; } }, 800);
   }
-
   function setUI(isSpeaking) {
     btnPlay.disabled = isSpeaking;
     btnPause.disabled = !isSpeaking || paused;
     btnResume.disabled = !isSpeaking || !paused;
     btnStop.disabled = !isSpeaking;
+    btnPrev.disabled = !isSpeaking;
+    btnNext.disabled = !isSpeaking;
     btnPlay.textContent = isSpeaking ? '🎙️ 朗读中…' : '▶ 开始朗读';
   }
+  function jumpTo(i) {
+    i = Math.max(0, Math.min(i, sentences.length - 1));
+    curIdx = i; playingToken++;
+    clearTimeout(gapTimer); synth.cancel(); stopAudio();
+    speakNext();
+  }
 
-  /* ---------- 事件 ---------- */
-  textInput.addEventListener('input', () => {
-    $('charCount').textContent = textInput.value.length + ' 字符';
-  });
+  /* ================= 事件 ================= */
+  textInput.addEventListener('input', () => { $('charCount').textContent = textInput.value.length + ' 字符'; saveSettings(); });
   $('charCount').textContent = textInput.value.length + ' 字符';
 
-  btnPlay.addEventListener('click', () => { speaking = true; paused = false; startSpeaking(); });
+  btnPlay.addEventListener('click', () => { speaking = true; startSpeaking(0); });
   btnStop.addEventListener('click', stopSpeaking);
-  btnPause.addEventListener('click', () => { synth.pause(); paused = true; setUI(true); });
-  btnResume.addEventListener('click', () => { synth.resume(); paused = false; setUI(true); });
-
-  rate.addEventListener('input', () => $('rateVal').textContent = rate.value + 'x');
-  pitch.addEventListener('input', () => $('pitchVal').textContent = pitch.value);
-  volume.addEventListener('input', () => $('volumeVal').textContent = Math.round(volume.value * 100) + '%');
-
-  langSelect.addEventListener('change', fillVoiceSelect);
-  $('btnTest').addEventListener('click', () => {
-    synth.cancel();
-    speakText('这是一段试听示例。This is a voice test.', currentSettings());
+  btnPause.addEventListener('click', () => {
+    paused = true; setUI(true);
+    if ($('engineOn').checked && audioEl) audioEl.pause(); else synth.pause();
+    clearTimeout(gapTimer);
+  });
+  btnResume.addEventListener('click', () => {
+    paused = false; setUI(true);
+    if ($('engineOn').checked && audioEl) audioEl.play(); else synth.resume();
+  });
+  btnPrev.addEventListener('click', () => jumpTo(curIdx - 1));
+  btnNext.addEventListener('click', () => jumpTo(curIdx + 1));
+  $('btnLoop').addEventListener('click', () => {
+    loopOn = !loopOn;
+    $('btnLoop').classList.toggle('btn-on', loopOn);
+    toast(loopOn ? '🔁 循环播放已开启' : '循环播放已关闭');
   });
 
-  /* ---------- 预设 ---------- */
-  const STORE_KEY = 'universal_reader_presets';
-  function getPresets() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
-  function savePresets(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
+  rate.addEventListener('input', () => { $('rateVal').textContent = rate.value + 'x'; saveSettings(); });
+  pitch.addEventListener('input', () => { $('pitchVal').textContent = pitch.value; saveSettings(); });
+  volume.addEventListener('input', () => { $('volumeVal').textContent = Math.round(volume.value * 100) + '%'; saveSettings(); });
+  gap.addEventListener('input', () => { $('gapVal').textContent = gap.value + 'ms'; saveSettings(); });
 
+  langSelect.addEventListener('change', () => { fillVoiceSelect(false); saveSettings(); });
+  voiceSelect.addEventListener('change', saveSettings);
+  $('voiceSearch').addEventListener('input', () => fillVoiceSelect(false));
+  $('smartLang').addEventListener('change', saveSettings);
+
+  $('btnTest').addEventListener('click', () => {
+    stopAll();
+    sentences = ['这是一段试听示例。This is a voice test. こんにちは。'];
+    curIdx = 0; renderReadingView(); $('progressWrap').style.display = 'block';
+    speaking = true; setUI(true); highlight(0); playingToken++;
+    if ($('engineOn').checked) playEngineSentence(sentences[0], playingToken);
+    else speakNative(sentences[0], playingToken);
+  });
+
+  // 点击句子跳转
+  readingView.addEventListener('click', (e) => {
+    const el = e.target.closest('.sent');
+    if (!el) return;
+    speaking = true;
+    startSpeaking(+el.dataset.i);
+  });
+
+  // 导入文件 + 拖拽
+  $('btnImport').addEventListener('click', () => $('fileInput').click());
+  $('fileInput').addEventListener('change', (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { textInput.value = reader.result; $('charCount').textContent = textInput.value.length + ' 字符'; saveSettings(); toast('已导入：' + f.name); };
+    reader.readAsText(f);
+    e.target.value = '';
+  });
+  ['dragover', 'dragleave', 'drop'].forEach(ev => textInput.addEventListener(ev, (e) => {
+    e.preventDefault();
+    textInput.classList.toggle('dragover', ev === 'dragover');
+    if (ev === 'drop') {
+      const f = e.dataTransfer.files[0];
+      if (f) { const reader = new FileReader(); reader.onload = () => { textInput.value = reader.result; $('charCount').textContent = textInput.value.length + ' 字符'; saveSettings(); toast('已导入：' + f.name); }; reader.readAsText(f); }
+    }
+  }));
+
+  $('btnSample').addEventListener('click', () => {
+    textInput.value = '你好呀！我是万能朗读器。\nHello! I am the Universal Reader.\nこんにちは、私は万能リーダーです。\n안녕하세요, 만능 리더입니다.\nПривет, я универсальный читатель!\n这一段里有中文、English、日本語、한국어 和 русский，开启"智能多语言"后，每一句都会自动用对应语言的声音朗读，快试试吧！';
+    $('charCount').textContent = textInput.value.length + ' 字符'; saveSettings();
+  });
+  $('btnClear').addEventListener('click', () => { textInput.value = ''; $('charCount').textContent = '0 字符'; saveSettings(); textInput.focus(); });
+
+  // 引擎配置
+  function loadEngineUI() {
+    const cfg = engineConfig();
+    if (cfg.method) $('engineMethod').value = cfg.method;
+    if (cfg.speedMode) $('engineSpeedMode').value = cfg.speedMode;
+    if (cfg.url) $('engineUrl').value = cfg.url;
+    if (cfg.body) $('engineBody').value = cfg.body;
+  }
+  ['engineMethod', 'engineSpeedMode', 'engineUrl', 'engineBody'].forEach(id => $(id).addEventListener('change', () => {
+    localStorage.setItem(STORE_ENGINE, JSON.stringify({
+      method: $('engineMethod').value, url: $('engineUrl').value,
+      body: $('engineBody').value, speedMode: $('engineSpeedMode').value
+    }));
+  }));
+  $('btnEngineTest').addEventListener('click', testEngine);
+
+  // 主题
+  $('btnTheme').addEventListener('click', () => {
+    const html = document.documentElement;
+    const toLight = html.dataset.theme === 'dark';
+    html.dataset.theme = toLight ? 'light' : 'dark';
+    $('btnTheme').textContent = toLight ? '☀️ 浅色' : '🌙 深色';
+    localStorage.setItem('ur_theme', toLight ? 'light' : 'dark');
+  });
+  if (localStorage.getItem('ur_theme') === 'light') {
+    document.documentElement.dataset.theme = 'light';
+    $('btnTheme').textContent = '☀️ 浅色';
+  }
+
+  // 快捷键
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); if (btnPlay.disabled) jumpTo(curIdx); else { speaking = true; startSpeaking(0); } }
+    if (e.key === 'Escape') stopSpeaking();
+    if (speaking && e.key === 'ArrowLeft') jumpTo(curIdx - 1);
+    if (speaking && e.key === 'ArrowRight') jumpTo(curIdx + 1);
+  });
+
+  /* ================= 预设 ================= */
+  function getPresets() { try { return JSON.parse(localStorage.getItem(STORE_PRESET)) || []; } catch { return []; } }
+  function savePresets(p) { localStorage.setItem(STORE_PRESET, JSON.stringify(p)); }
   function renderPresets() {
     const list = getPresets();
     const box = $('presetList');
     if (!list.length) {
-      box.innerHTML = '<span style="color:var(--text-dim);font-size:13px">还没有预设。调好语言、音色、语速和音调后，起个名字保存即可，下次一键切换。</span>';
+      box.innerHTML = '<span style="color:var(--text-dim);font-size:13px">还没有预设。调好声音后起个名字保存即可，下次一键切换。</span>';
       return;
     }
     box.innerHTML = '';
@@ -384,14 +762,17 @@
       chip.innerHTML = `<button class="use" title="应用">${p.name} · ${langLabel(p.lang)} ${p.rate}x</button><button class="del" title="删除">✕</button>`;
       chip.querySelector('.use').addEventListener('click', () => {
         const li = [...langSelect.options].find(o => o.value === p.lang);
-        if (li) { langSelect.value = p.lang; fillVoiceSelect(); }
+        if (li) { langSelect.value = p.lang; fillVoiceSelect(false); }
         const vi = [...voiceSelect.options].find(o => o.value === p.voiceName);
         if (vi) voiceSelect.value = p.voiceName;
         else if (voiceSelect.options.length) voiceSelect.selectedIndex = 0;
-        rate.value = p.rate; pitch.value = p.pitch; volume.value = p.volume;
+        rate.value = p.rate; pitch.value = p.pitch; volume.value = p.volume; gap.value = p.gap ?? 150;
         $('rateVal').textContent = p.rate + 'x';
         $('pitchVal').textContent = p.pitch;
         $('volumeVal').textContent = Math.round(p.volume * 100) + '%';
+        $('gapVal').textContent = gap.value + 'ms';
+        saveSettings();
+        toast('已应用预设：' + p.name);
       });
       chip.querySelector('.del').addEventListener('click', () => {
         const arr = getPresets(); arr.splice(i, 1); savePresets(arr); renderPresets();
@@ -399,7 +780,6 @@
       box.appendChild(chip);
     });
   }
-
   $('btnSavePreset').addEventListener('click', () => {
     const name = $('presetName').value.trim() || ('声音 ' + (getPresets().length + 1));
     const arr = getPresets();
@@ -407,20 +787,24 @@
     savePresets(arr);
     $('presetName').value = '';
     renderPresets();
+    toast('已保存：' + name);
   });
 
-  /* ---------- 初始化 ---------- */
+  /* ================= 初始化 ================= */
+  // 恢复设置
+  const saved = getSettings();
+  if (saved.rate) { rate.value = saved.rate; $('rateVal').textContent = saved.rate + 'x'; }
+  if (saved.pitch !== undefined) { pitch.value = saved.pitch; $('pitchVal').textContent = saved.pitch; }
+  if (saved.volume !== undefined) { volume.value = saved.volume; $('volumeVal').textContent = Math.round(saved.volume * 100) + '%'; }
+  if (saved.gap !== undefined) { gap.value = saved.gap; $('gapVal').textContent = saved.gap + 'ms'; }
+  if (saved.smartLang !== undefined) $('smartLang').checked = saved.smartLang;
+  if (saved.text) { textInput.value = saved.text; $('charCount').textContent = textInput.value.length + ' 字符'; }
+
   loadVoices();
-  // Chrome 异步加载 voices
   if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
   setTimeout(loadVoices, 500);
+  loadEngineUI();
   renderPresets();
-
-  // 快捷键：Ctrl+Enter 播放，Esc 停止
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'Enter' && !btnPlay.disabled) { speaking = true; startSpeaking(); }
-    if (e.key === 'Escape') stopSpeaking();
-  });
 })();
 </script>
 </body>
