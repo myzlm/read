@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万能朗读器 · Universal Reader</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel2: #1e2230;
+    --border: #2a3042;
+    --text: #e8eaf0;
+    --text-dim: #9aa3b5;
+    --accent: #6c8cff;
+    --accent2: #9a6cff;
+    --accent-glow: rgba(108, 140, 255, .35);
+    --green: #4ade80;
+    --red: #f87171;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+    background-image:
+      radial-gradient(ellipse 600px 300px at 15% 0%, rgba(108,140,255,.12), transparent),
+      radial-gradient(ellipse 600px 300px at 85% 10%, rgba(154,108,255,.10), transparent);
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 {
+    font-size: 30px; font-weight: 700; letter-spacing: 1px;
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: var(--text-dim); margin-top: 8px; font-size: 14px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  }
+  .card h2 {
+    font-size: 15px; color: var(--text-dim); font-weight: 600;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  /* 文本区 */
+  #textInput {
+    width: 100%; min-height: 160px; resize: vertical;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; font-size: 16px; line-height: 1.7;
+    outline: none; transition: border-color .2s;
+  }
+  #textInput:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .toolbar { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .toolbar .hint { color: var(--text-dim); font-size: 12px; }
+
+  /* 阅读高亮 */
+  #readingView { display: none; margin-top: 14px; padding: 14px; background: var(--panel2);
+    border-radius: 10px; border: 1px solid var(--border); font-size: 16px; line-height: 1.9; }
+  #readingView .sent { transition: background .2s; padding: 2px 4px; border-radius: 4px; color: var(--text-dim); }
+  #readingView .sent.active { background: var(--accent-glow); color: var(--text); }
+  #readingView .sent.done { color: var(--text); }
+
+  /* 按钮 */
+  button {
+    cursor: pointer; border: 1px solid var(--border);
+    background: var(--panel2); color: var(--text);
+    padding: 10px 18px; border-radius: 10px; font-size: 14px;
+    transition: all .18s;
+  }
+  button:hover { border-color: var(--accent); transform: translateY(-1px); }
+  button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn-primary {
+    background: linear-gradient(120deg, var(--accent), var(--accent2));
+    border: none; color: #fff; font-weight: 600; padding: 11px 26px;
+    box-shadow: 0 4px 18px var(--accent-glow);
+  }
+  .btn-danger { color: var(--red); }
+  .btn-green { color: var(--green); }
+
+  /* 控制区 */
+  .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .control label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px;
+    display: flex; justify-content: space-between; }
+  .control label span.val { color: var(--accent); font-weight: 600; }
+  select {
+    width: 100%; padding: 10px; border-radius: 10px;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); outline: none; font-size: 14px;
+  }
+  select:focus { border-color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+
+  /* 预设 */
+  .preset-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .preset-row input[type=text] {
+    flex: 1; min-width: 160px; padding: 10px 12px; border-radius: 10px;
+    background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); outline: none; font-size: 14px;
+  }
+  .preset-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .preset-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel2); border: 1px solid var(--border);
+    padding: 7px 12px; border-radius: 999px; font-size: 13px;
+    transition: border-color .2s;
+  }
+  .preset-chip:hover { border-color: var(--accent); }
+  .preset-chip button {
+    border: none; background: none; padding: 0; font-size: 13px;
+    color: var(--accent); cursor: pointer;
+  }
+  .preset-chip .del { color: var(--red); margin-left: 2px; }
+
+  footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 30px; line-height: 1.8; }
+  .banner-warn {
+    display: none; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.4);
+    color: var(--red); padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🎙️ 万能朗读器</h1>
+    <p>多语言朗读 · 语速音调自由调节 · 自定义声音预设 · 完全本地运行，无需联网</p>
+  </header>
+
+  <div class="banner-warn" id="noSupport">
+    ⚠️ 当前浏览器不支持语音合成（Web Speech API）。请使用 Chrome / Edge 浏览器打开本页面。
+  </div>
+
+  <!-- 输入区 -->
+  <div class="card">
+    <h2><span class="dot"></span>朗读文本</h2>
+    <textarea id="textInput" placeholder="在此输入或粘贴要朗读的文字… 支持中文、英文、日文、韩文、法文、德文等任何语言。&#10;&#10;试试：「你好，世界！Hello, world! こんにちは！」">你好，欢迎使用万能朗读器！Hello, welcome to the Universal Reader!</textarea>
+    <div class="toolbar">
+      <button class="btn-primary" id="btnPlay">▶ 开始朗读</button>
+      <button id="btnPause" disabled>⏸ 暂停</button>
+      <button id="btnResume" disabled>⏯ 继续</button>
+      <button class="btn-danger" id="btnStop" disabled>⏹ 停止</button>
+      <span class="hint" id="charCount">0 字符</span>
+    </div>
+    <div id="readingView"></div>
+  </div>
+
+  <!-- 声音设置 -->
+  <div class="card">
+    <h2><span class="dot"></span>声音设置</h2>
+    <div class="controls">
+      <div class="control">
+        <label>语言 <span class="val" id="langVal"></span></label>
+        <select id="langSelect"></select>
+      </div>
+      <div class="control">
+        <label>音色 / 声音 <span class="val" id="voiceVal"></span></label>
+        <select id="voiceSelect"></select>
+      </div>
+      <div class="control">
+        <label>语速 <span class="val" id="rateVal">1.0x</span></label>
+        <input type="range" id="rate" min="0.5" max="2.5" step="0.1" value="1">
+      </div>
+      <div class="control">
+        <label>音调（音色高低） <span class="val" id="pitchVal">1.0</span></label>
+        <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
+      </div>
+      <div class="control">
+        <label>音量 <span class="val" id="volumeVal">100%</span></label>
+        <input type="range" id="volume" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="control">
+        <label>试听示例</label>
+        <button style="width:100%" id="btnTest">🔊 用当前设置试听一句</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义声音预设 -->
+  <div class="card">
+    <h2><span class="dot"></span>自定义声音（保存当前设置为一套预设）</h2>
+    <div class="preset-row">
+      <input type="text" id="presetName" placeholder="给这套声音起个名字，如：温柔女声 / 低沉大叔 / 日语慢速…" maxlength="20">
+      <button class="btn-primary" id="btnSavePreset">💾 保存当前声音</button>
+    </div>
+    <div class="preset-list" id="presetList"></div>
+  </div>
+
+  <footer>
+    基于浏览器 Web Speech API 构建 · 声音取决于系统安装的语音包<br>
+    提示：在 Windows「设置 → 时间和语言 → 语音」中可添加更多语言语音包 · 预设保存在本地浏览器中
+  </footer>
+</div>
+
+<script>
+(function () {
+  const synth = window.speechSynthesis;
+  const $ = (id) => document.getElementById(id);
+  const textInput = $('textInput'), langSelect = $('langSelect'), voiceSelect = $('voiceSelect');
+  const rate = $('rate'), pitch = $('pitch'), volume = $('volume');
+  const btnPlay = $('btnPlay'), btnPause = $('btnPause'), btnResume = $('btnResume'), btnStop = $('btnStop');
+  const readingView = $('readingView');
+
+  if (!synth) { $('noSupport').style.display = 'block'; document.querySelectorAll('button').forEach(b => b.disabled = true); return; }
+
+  let voices = [];
+  let speaking = false, paused = false;
+  let sentences = [], curIdx = 0;
+
+  /* ---------- 工具 ---------- */
+  const LANG_NAMES = { 'zh': '中文', 'en': '英语', 'ja': '日语', 'ko': '韩语', 'fr': '法语', 'de': '德语', 'es': '西班牙语', 'ru': '俄语', 'it': '意大利语', 'pt': '葡萄牙语', 'ar': '阿拉伯语', 'th': '泰语', 'vi': '越南语', 'yue': '粤语' };
+  function langLabel(code) {
+    const base = code.toLowerCase().split(/[-_]/)[0];
+    const name = LANG_NAMES[base] || code;
+    return base === 'zh' && /hant|tw|hk/i.test(code) ? '中文（繁/粤）' : name;
+  }
+
+  function loadVoices() {
+    voices = synth.getVoices();
+    if (!voices.length) return;
+    // 按语言分组
+    const byLang = {};
+    voices.forEach(v => { (byLang[v.lang] = byLang[v.lang] || []).push(v); });
+    const langs = Object.keys(byLang).sort((a, b) => {
+      const az = a.toLowerCase().startsWith('zh') ? 0 : 1;
+      const bz = b.toLowerCase().startsWith('zh') ? 0 : 1;
+      return az - bz || langLabel(a).localeCompare(langLabel(b), 'zh');
+    });
+    langSelect.innerHTML = '';
+    langs.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l;
+      opt.textContent = `${langLabel(l)} (${l}) · ${byLang[l].length} 个声音`;
+      langSelect.appendChild(opt);
+    });
+    fillVoiceSelect();
+  }
+
+  function fillVoiceSelect() {
+    const lang = langSelect.value;
+    const list = voices.filter(v => v.lang === lang);
+    voiceSelect.innerHTML = '';
+    list.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name;
+      let tag = [];
+      if (v.localService) tag.push('本地'); else tag.push('在线');
+      if (/female|女/i.test(v.name)) tag.push('女'); else if (/male|男/i.test(v.name)) tag.push('男');
+      opt.textContent = `${v.name} · ${tag.join('/')}`;
+      voiceSelect.appendChild(opt);
+    });
+    $('voiceVal').textContent = list.length + ' 个';
+  }
+
+  function currentSettings() {
+    return {
+      lang: langSelect.value,
+      voiceName: voiceSelect.value,
+      rate: parseFloat(rate.value),
+      pitch: parseFloat(pitch.value),
+      volume: parseFloat(volume.value)
+    };
+  }
+
+  function speakText(text, settings, onend) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = settings.lang;
+    const v = voices.find(v => v.name === settings.voiceName);
+    if (v) u.voice = v;
+    u.rate = settings.rate;
+    u.pitch = settings.pitch;
+    u.volume = settings.volume;
+    if (onend) u.onend = onend;
+    u.onerror = (e) => { if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn(e); };
+    synth.speak(u);
+    return u;
+  }
+
+  /* ---------- 分句 + 高亮朗读 ---------- */
+  function splitSentences(text) {
+    // 按中英文标点分句，保留标点
+    return text.split(/(?<=[。！？；!?;.…\n])\s*/).filter(s => s.trim());
+  }
+
+  function renderReadingView() {
+    readingView.style.display = 'block';
+    readingView.innerHTML = sentences.map((s, i) => `<span class="sent" data-i="${i}">${s.replace(/</g, '&lt;')}</span>`).join(' ');
+  }
+  function highlight(i) {
+    readingView.querySelectorAll('.sent').forEach(el => {
+      el.classList.toggle('active', +el.dataset.i === i);
+      el.classList.toggle('done', +el.dataset.i < i);
+    });
+    const act = readingView.querySelector('.sent.active');
+    if (act) act.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function startSpeaking() {
+    const text = textInput.value.trim();
+    if (!text) { textInput.focus(); return; }
+    synth.cancel();
+    sentences = splitSentences(text);
+    curIdx = 0;
+    renderReadingView();
+    setUI(true);
+    speakNext();
+  }
+
+  function speakNext() {
+    if (curIdx >= sentences.length) { stopSpeaking(); return; }
+    highlight(curIdx);
+    const settings = currentSettings();
+    speakText(sentences[curIdx], settings, () => {
+      if (!speaking) return;
+      curIdx++;
+      speakNext();
+    });
+  }
+
+  function stopSpeaking() {
+    speaking = false; paused = false;
+    synth.cancel();
+    setUI(false);
+    highlight(-1);
+    setTimeout(() => { if (!speaking) readingView.style.display = 'none'; }, 800);
+  }
+
+  function setUI(isSpeaking) {
+    btnPlay.disabled = isSpeaking;
+    btnPause.disabled = !isSpeaking || paused;
+    btnResume.disabled = !isSpeaking || !paused;
+    btnStop.disabled = !isSpeaking;
+    btnPlay.textContent = isSpeaking ? '🎙️ 朗读中…' : '▶ 开始朗读';
+  }
+
+  /* ---------- 事件 ---------- */
+  textInput.addEventListener('input', () => {
+    $('charCount').textContent = textInput.value.length + ' 字符';
+  });
+  $('charCount').textContent = textInput.value.length + ' 字符';
+
+  btnPlay.addEventListener('click', () => { speaking = true; paused = false; startSpeaking(); });
+  btnStop.addEventListener('click', stopSpeaking);
+  btnPause.addEventListener('click', () => { synth.pause(); paused = true; setUI(true); });
+  btnResume.addEventListener('click', () => { synth.resume(); paused = false; setUI(true); });
+
+  rate.addEventListener('input', () => $('rateVal').textContent = rate.value + 'x');
+  pitch.addEventListener('input', () => $('pitchVal').textContent = pitch.value);
+  volume.addEventListener('input', () => $('volumeVal').textContent = Math.round(volume.value * 100) + '%');
+
+  langSelect.addEventListener('change', fillVoiceSelect);
+  $('btnTest').addEventListener('click', () => {
+    synth.cancel();
+    speakText('这是一段试听示例。This is a voice test.', currentSettings());
+  });
+
+  /* ---------- 预设 ---------- */
+  const STORE_KEY = 'universal_reader_presets';
+  function getPresets() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
+  function savePresets(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
+
+  function renderPresets() {
+    const list = getPresets();
+    const box = $('presetList');
+    if (!list.length) {
+      box.innerHTML = '<span style="color:var(--text-dim);font-size:13px">还没有预设。调好语言、音色、语速和音调后，起个名字保存即可，下次一键切换。</span>';
+      return;
+    }
+    box.innerHTML = '';
+    list.forEach((p, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'preset-chip';
+      chip.innerHTML = `<button class="use" title="应用">${p.name} · ${langLabel(p.lang)} ${p.rate}x</button><button class="del" title="删除">✕</button>`;
+      chip.querySelector('.use').addEventListener('click', () => {
+        const li = [...langSelect.options].find(o => o.value === p.lang);
+        if (li) { langSelect.value = p.lang; fillVoiceSelect(); }
+        const vi = [...voiceSelect.options].find(o => o.value === p.voiceName);
+        if (vi) voiceSelect.value = p.voiceName;
+        else if (voiceSelect.options.length) voiceSelect.selectedIndex = 0;
+        rate.value = p.rate; pitch.value = p.pitch; volume.value = p.volume;
+        $('rateVal').textContent = p.rate + 'x';
+        $('pitchVal').textContent = p.pitch;
+        $('volumeVal').textContent = Math.round(p.volume * 100) + '%';
+      });
+      chip.querySelector('.del').addEventListener('click', () => {
+        const arr = getPresets(); arr.splice(i, 1); savePresets(arr); renderPresets();
+      });
+      box.appendChild(chip);
+    });
+  }
+
+  $('btnSavePreset').addEventListener('click', () => {
+    const name = $('presetName').value.trim() || ('声音 ' + (getPresets().length + 1));
+    const arr = getPresets();
+    arr.push({ name, ...currentSettings() });
+    savePresets(arr);
+    $('presetName').value = '';
+    renderPresets();
+  });
+
+  /* ---------- 初始化 ---------- */
+  loadVoices();
+  // Chrome 异步加载 voices
+  if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = loadVoices;
+  setTimeout(loadVoices, 500);
+  renderPresets();
+
+  // 快捷键：Ctrl+Enter 播放，Esc 停止
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'Enter' && !btnPlay.disabled) { speaking = true; startSpeaking(); }
+    if (e.key === 'Escape') stopSpeaking();
+  });
+})();
+</script>
+</body>
+</html>
